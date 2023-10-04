@@ -19,11 +19,9 @@ final class NYCSchoolTests: XCTestCase {
     }
 
     func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+
+        var sum = 2 + 2
+        XCTAssert(sum == 4)
     }
 
     func testPerformanceExample() throws {
@@ -31,6 +29,77 @@ final class NYCSchoolTests: XCTestCase {
         self.measure {
             // Put the code you want to measure the time of here.
         }
+    }
+    
+    func testGettingSchoolsWithMockEmptyResult(){
+        let expectation = expectation(description: "testing empty mock api")
+        
+        let mockApi = MockSchoolAPI()
+        mockApi.loadState = .empty
+        
+        
+        let viewModel = SchoolsViewModel(apiService: mockApi)
+        
+        viewModel.getSchools { schools, error in
+            XCTAssertTrue(schools?.isEmpty == true, "Expected schools to be empty, bu received some values")
+            expectation.fulfill()
+            
+        }
+        
+        waitForExpectations(timeout: 1.0){ error in
+            if let error = error {
+                XCTFail("Expectation failed \(error)")
+            }
+        }
+    }
+    
+    func testGettingSchoolwithErrorResult(){
+        let expectation = expectation(description: "testion empty mock api")
+        
+        let mockAPI = MockSchoolAPI()
+        mockAPI.loadState = .error
+        
+        let viewModel = SchoolsViewModel(apiService: mockAPI)
+        viewModel.getSchools { schools, error in
+            XCTAssertTrue(schools == nil, "Expected to get no schools and error, but receid schools")
+            XCTAssertNotNil(error, "Expected to get an error, but receives no error")
+            
+            expectation.fulfill()
+            
+            
+        }
+        
+        waitForExpectations(timeout: 1.0) { error in
+            if let error = error {
+                XCTFail("Expecation falid \(error)")
+            }
+            
+        }
+        
+    }
+    
+    func testGettingSchoolsWithSuccess (){
+        let expectation = expectation(description: "testin success state with mock api")
+        
+        let mockAPi = MockSchoolAPI()
+        mockAPi.loadState = .loaded
+        
+        let viewModel = SchoolsViewModel(apiService: mockAPi)
+        
+        viewModel.getSchools{ schools, error in
+            XCTAssert(schools?.isEmpty == false, "Expected to get schools")
+            XCTAssertNil(error, "Expected error to be nil")
+            expectation.fulfill()
+        }
+        
+        waitForExpectations(timeout: 1.0){ error in
+            if let error = error {
+                XCTFail("Expectation falid \(error)")
+            }
+            
+        }
+        
+        
     }
 
 }
