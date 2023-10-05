@@ -6,10 +6,13 @@
 //
 
 import XCTest
+import Combine
 @testable import NYCSchool
 
-final class NYCSchoolTests: XCTestCase {
 
+final class NYCSchoolsTests: XCTestCase {
+
+    private var cancellables = Set<AnyCancellable>()
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.
     }
@@ -18,88 +21,78 @@ final class NYCSchoolTests: XCTestCase {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
-    func testExample() throws {
-
-        var sum = 2 + 2
-        XCTAssert(sum == 4)
-    }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
-        }
+    override func setUp() async throws {
+        try await super.setUp()
+        cancellables.removeAll()
     }
     
-    func testGettingSchoolsWithMockEmptyResult(){
-        let expectation = expectation(description: "testing empty mock api")
+    func testGettingSchoolsWithMockEmptyResult() {
+        let expectation = expectation(description: "testing empty state with mock api")
         
-        let mockApi = MockSchoolAPI()
-        mockApi.loadState = .empty
+        let mockAPI = MockSchoolAPI()
+        mockAPI.loadState = .empty
         
+        let viewModel = SchoolsViewModel(apiService: mockAPI)
+        viewModel.getSchools()
         
-        let viewModel = SchoolsViewModel(apiService: mockApi)
+        viewModel.$schools
+            .receive(on: RunLoop.main)
+            .sink { schools in
+                XCTAssertTrue(schools.isEmpty == true, "Expected schools to be empty, but received some values")
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
         
-        viewModel.getSchools { schools, error in
-            XCTAssertTrue(schools?.isEmpty == true, "Expected schools to be empty, bu received some values")
-            expectation.fulfill()
-            
-        }
-        
-        waitForExpectations(timeout: 1.0){ error in
+        waitForExpectations(timeout: 1.0) { error in
             if let error = error {
                 XCTFail("Expectation failed \(error)")
             }
         }
     }
     
-    func testGettingSchoolwithErrorResult(){
-        let expectation = expectation(description: "testion empty mock api")
+    func testGettingSchoolsWithErrorResult() {
+        let expectation = expectation(description: "testing error state with mock api")
         
         let mockAPI = MockSchoolAPI()
         mockAPI.loadState = .error
         
         let viewModel = SchoolsViewModel(apiService: mockAPI)
-        viewModel.getSchools { schools, error in
-            XCTAssertTrue(schools == nil, "Expected to get no schools and error, but receid schools")
-            XCTAssertNotNil(error, "Expected to get an error, but receives no error")
-            
-            expectation.fulfill()
-            
-            
-        }
+        viewModel.getSchools()
+        viewModel.$error
+            .receive(on: RunLoop.main)
+            .sink{ error in
+                XCTAssertNotNil(error, "Expected to get an error, but received no error")
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
         
         waitForExpectations(timeout: 1.0) { error in
             if let error = error {
-                XCTFail("Expecation falid \(error)")
+                XCTFail("Expectation failed \(error)")
             }
-            
         }
-        
     }
     
-    func testGettingSchoolsWithSuccess (){
-        let expectation = expectation(description: "testin success state with mock api")
+    func testGettingSchoolsWithSuccess() {
+        let expectation = expectation(description: "testing success state with mock api")
+        let mockAPI = MockSchoolAPI()
+        mockAPI.loadState = .loaded
         
-        let mockAPi = MockSchoolAPI()
-        mockAPi.loadState = .loaded
+        let viewModel = SchoolsViewModel(apiService: mockAPI)
+        viewModel.getSchools()
         
-        let viewModel = SchoolsViewModel(apiService: mockAPi)
-        
-        viewModel.getSchools{ schools, error in
-            XCTAssert(schools?.isEmpty == false, "Expected to get schools")
-            XCTAssertNil(error, "Expected error to be nil")
-            expectation.fulfill()
-        }
-        
-        waitForExpectations(timeout: 1.0){ error in
-            if let error = error {
-                XCTFail("Expectation falid \(error)")
+        viewModel.$schools
+            .receive(on: RunLoop.main)
+            .sink { schools in
+                XCTAssert(schools.isEmpty == false, "Expected to get schools")
+                expectation.fulfill()
             }
-            
+            .store(in: &cancellables)
+        
+        waitForExpectations(timeout: 1.0) { error in
+            if let error = error {
+                XCTFail("Expectation failed \(error)")
+            }
         }
-        
-        
     }
-
 }
